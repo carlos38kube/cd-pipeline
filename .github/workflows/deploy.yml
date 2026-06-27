@@ -26,7 +26,7 @@ jobs:
       - name: Configurar kubeconfig
         run: |
           mkdir -p ~/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > ~/.kube/config
 
       - name: Deploy o Rollback
         run: |
