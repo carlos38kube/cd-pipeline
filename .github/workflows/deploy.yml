@@ -1,0 +1,48 @@
+name: Deploy & Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Acción a ejecutar'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy
+          - rollback
+      image_tag:
+        description: 'Tag de imagen (ej: 11 para deploy, o tag anterior para rollback)'
+        required: true
+        default: 'latest'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configurar kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configurar kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+
+      - name: Deploy o Rollback
+        run: |
+          if [ "${{ inputs.action }}" = "deploy" ]; then
+            echo "🚀 Desplegando imagen tag: ${{ inputs.image_tag }}"
+            kubectl set image deployment/kubeops-app \
+              kubeops-app=${{ secrets.DOCKERHUB_USERNAME }}/kubeops-app:${{ inputs.image_tag }} \
+              -n default
+            kubectl rollout status deployment/kubeops-app -n default
+          else
+            echo "⏪ Rollback a tag: ${{ inputs.image_tag }}"
+            kubectl set image deployment/kubeops-app \
+              kubeops-app=${{ secrets.DOCKERHUB_USERNAME }}/kubeops-app:${{ inputs.image_tag }} \
+              -n default
+            kubectl rollout status deployment/kubeops-app -n default
+          fi
+
+      - name: Estado del deployment
+        run: kubectl get pods -n default -l app=kubeops-app
